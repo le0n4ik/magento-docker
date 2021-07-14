@@ -17,5 +17,5 @@ cd $DOCKER_PROJECT_DIR
 
 
 # composer based installation
-docker-compose exec app magento reinstall_monolith
+docker-compose exec app magento reinstall_saas
 docker-compose exec app magento config_setup

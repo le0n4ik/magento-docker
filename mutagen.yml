@@ -26,7 +26,7 @@ beforeTerminate:
 commands:
   logs: docker-compose logs --follow
   reindex: docker-compose exec app magento reindex
-  reinstall: bash reinstall.sh
+  reinstall: bash reinstall-magento.sh
   xdebug-enable: sed -ie "s|#zend_extension=xdebug.so|zend_extension=xdebug.so|" ./etc/php/xdebug.ini && docker-compose restart app
   xdebug-disable: sed -ie "s|zend_extension=xdebug.so|#zend_extension=xdebug.so|" ./etc/php/xdebug.ini && docker-compose restart app
   grpc-server-start-monolith: docker-compose exec app magento grpc
@@ -43,7 +43,7 @@ sync:
       defaultFileMode: 0666
       defaultDirectoryMode: 0777
   code:
-    alpha: "/Users/michael/projects/magento/storefront/repos"
+    alpha: "~/projects/magento/storefront/repos"
     beta: "docker://web-mutagen/var/www"
     mode: "two-way-resolved"
     ignore:

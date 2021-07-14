@@ -12,6 +12,8 @@ services:
     volumes:
       - code:/var/www
       - ./etc/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./etc/nginx/magento.conf:/etc/nginx/conf.d/default.conf
+      #- ./etc/nginx/xhgui.conf:/etc/nginx/conf.d/xhgui.conf
       - ./etc/nginx/server.crt:/etc/nginx/server.crt
       - ./etc/nginx/server.key:/etc/nginx/server.key
       - ./etc/nginx/fetch_env.js:/etc/nginx/fetch_env.js
@@ -65,7 +67,6 @@ services:
     volumes:
       - code:/var/www
       - ./etc/php/storefront-env.php:/tmp/storefront-env.php
-      - ./etc/php/xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini
       - ./etc/php/tools:/usr/local/bin/magento2:ro
       - ./etc/php/php.ini:/usr/local/etc/php/php.ini:ro
       - ./etc/php/php-fpm.conf:/usr/local/etc/php-fpm.conf
@@ -77,6 +78,16 @@ services:
       COMPOSER_HOME: /var/www/.composer
       PHP_IDE_CONFIG: serverName=magento.test
     command: sh -c 'service ssh start; php-fpm -R'
+  app-xdebug:
+    image: rkostiv/php-with-rr-grpc
+    hostname: app-xdebug
+    volumes:
+      - code:/var/www
+      - ./etc/php/php.ini:/usr/local/etc/php/php.ini:ro
+      - ./etc/php/php-fpm.conf:/usr/local/etc/php-fpm.conf
+      - ./etc/php/xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini
+    environment:
+      PHP_IDE_CONFIG: serverName=magento.test
   elastic:
     image: elasticsearch:$ELASTICSEARCH_IMAGE_VERSION
     hostname: elastic
@@ -103,11 +114,11 @@ services:
       nofile:
         soft: 20000
         hard: 40000
-#  rabbit:
-#    image: rabbitmq:management
-#    hostname: rabbitmq
-#    ports:
-#      - "${RABBIT_PORT}:15672"
+  rabbit:
+    image: rabbitmq:management
+    hostname: rabbitmq
+    ports:
+      - "${RABBIT_PORT}:15672"
 #  mail:
 #    image: mailhog/mailhog
 #    hostname: mail

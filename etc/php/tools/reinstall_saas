@@ -1,0 +1,94 @@
+#!/bin/bash
+shopt -s extglob
+
+DB_HOST=db
+
+
+# for mutagen installation:
+# cp /var/www/magento-docker/etc/php/tools/* /usr/local/bin 2>/dev/null || :
+
+# remove links
+find  . -type l -delete
+echo 'start'
+#clean project dir (not for mutagen)
+if [[ -d .git ]]; then
+   git clean -dfx -e '.idea' $(mount | grep -oP '/var/www/magento2ce/\K\S*' | xargs -rn 1 echo '-e ')
+   git checkout composer.lock composer.json
+fi
+
+for edition in ${INSTALLED_REPOS_commerce_export}; do
+   #apply edition
+   dst="/var/www/magento2ce"
+
+   if [[ ${edition} == "magento2ce" ]]; then
+      # skip copying, linking for standalone applications
+        php /var/www/magento2ee/dev/tools/build-ee.php --command unlink --exclude true --ce-source ${dst}
+      continue
+   fi
+
+   # copy into app/code/Magento
+   if [[ ${edition} == "inventory" ]] || [[ ${edition} == "commerce-data-export" ]] ||\
+        [[ ${edition} == "saas-export" ]] ||\
+        [[ ${edition} == "commerce-data-export" ]] ||\
+        [[ ${edition} == "commerce-data-export-ee" ]] ||\
+        [[ ${edition} == "storefront-graphql-proxy" ]]; then
+        dst="/var/www/magento2ce/app/code/Magento"
+   fi
+
+   if [[ -d ../${edition} ]] || [[ -d ../magento2ce/${edition} ]]; then
+
+     source=/var/www/${edition}
+
+     if [ ${MUTAGEN_INSTALLATION} == "NO" ]; then
+       cp -rlf ${source}/!(.git|vendor|..|.) ${dst}
+     else
+       if [[ ${edition} == "*magento2*" ]]; then
+         cp -rlf /var/www/magento2ee/composer* ${dst} 2>/dev/null
+       fi
+       php /var/www/magento2ee/dev/tools/build-ee.php --command link --exclude true --ce-source ${dst} --ee-source /var/www/${edition}
+
+     fi
+   fi
+done
+
+#install magento
+
+composer global require hirak/prestissimo
+composer install
+
+if [[ -f ../catalog-storefront/dev/tools/install-dependencies.php ]] && [[ ! -f dev/tools/install-dependencies.php ]]; then
+  cp ../catalog-storefront/dev/tools/install-dependencies.php dev/tools/install-dependencies.php
+fi
+
+if [[ -f dev/tools/install-dependencies.php ]]; then
+  echo 'install module dependencies'
+  php dev/tools/install-dependencies.php .
+fi
+
+mysql -uroot -h${DB_HOST} -e "DROP DATABASE IF EXISTS magento; create database magento;"
+rm -rf generated/* var/* app/etc/env.php app/etc/config.php
+
+# echo y | bin/magento setup:uninstall
+bin/magento setup:install \
+  --backend-frontname=admin \
+  --admin-lastname=Admin \
+  --admin-firstname=Admin \
+  --admin-email=magento@mailinator.com \
+  --admin-user=admin \
+  --admin-password=123123q \
+  --db-name=magento \
+  --db-host=${DB_HOST} \
+  --elasticsearch-host=elastic \
+  --search-engine=elasticsearch${ELASTICSEARCH_VERSION} \
+  --base-url=http://${MAGENTO_DOMAIN}/ \
+  --session-save=redis \
+  --session-save-redis-host=redis \
+  --session-save-redis-db=0 \
+  --cache-backend=redis \
+  --cache-backend-redis-server=redis \
+  --cache-backend-redis-db=1 \
+  --amqp-host=rabbit \
+  --amqp-user=guest \
+  --amqp-password=guest
+
+bin/magento config:set web/secure/base_url http://${MAGENTO_DOMAIN}/
